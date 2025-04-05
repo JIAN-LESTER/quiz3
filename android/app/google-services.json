@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "45617888402",
+    "project_id": "tabarno-5ae28",
+    "storage_bucket": "tabarno-5ae28.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45617888402:android:584a5cd13a34df49257a4b",
+        "android_client_info": {
+          "package_name": "com.example.db"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUibolivJsKy7i5kuOy_o9UJd771GK6lU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45617888402:android:8842372f1334690e257a4b",
+        "android_client_info": {
+          "package_name": "com.example.quiz3_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUibolivJsKy7i5kuOy_o9UJd771GK6lU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
