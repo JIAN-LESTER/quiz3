@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:quiz3_1/firebase_options.dart';
 import 'package:quiz3_1/outfit_classifier.dart';
+import 'package:quiz3_1/outfit_inventory.dart';
 import 'package:quiz3_1/outfit_screen.dart';
 
 void main() async {
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: OutfitScreen());
+        debugShowCheckedModeBanner: false,
+        home: OutfitInventory());
   }
 }
