@@ -1,19 +1,18 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:quiz3_1/matched_outfits.dart';
 import 'package:quiz3_1/outfit_all.dart';
 import 'package:quiz3_1/outfit_screen.dart';
 
 class OutfitInventory extends StatefulWidget {
+  @override
   _OutfitInventoryState createState() => _OutfitInventoryState();
 }
 
 class _OutfitInventoryState extends State<OutfitInventory> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  OutfitScreen outfitScreen = OutfitScreen();
-
   StreamSubscription? stream;
 
   List<DocumentSnapshot> tops = [];
@@ -26,54 +25,19 @@ class _OutfitInventoryState extends State<OutfitInventory> {
     _loadOutfits();
   }
 
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Digital Wardrobe"),
-        actions: [
-          TextButton(
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => OutfitScreen()));
-              },
-              child: Text("Add Clothes"))
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            buildOutfitCategory('Tops', tops.take(3).toList()),
-            SizedBox(height: 20),
-            buildOutfitCategory('Bottoms', bottoms.take(3).toList()),
-            SizedBox(height: 20),
-            buildOutfitCategory('Shoes', shoes.take(3).toList()),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _loadOutfits() {
-   
-
-    stream =
-        firestore.collection('outfits').snapshots().listen((querySnapshot) {
+    stream = firestore.collection('outfits').snapshots().listen((querySnapshot) {
       tops.clear();
       bottoms.clear();
       shoes.clear();
 
       for (var doc in querySnapshot.docs) {
-        String outfitType = doc['outfitType'];
-
-        if (outfitType.toLowerCase().contains('top')) {
+        String outfitType = doc['outfitType'].toString().toLowerCase();
+        if (outfitType.contains('top')) {
           tops.add(doc);
-        } else if (outfitType.toLowerCase().contains('bottom')) {
+        } else if (outfitType.contains('bottom')) {
           bottoms.add(doc);
-        } else if (outfitType.toLowerCase().contains('shoes')) {
+        } else if (outfitType.contains('shoes')) {
           shoes.add(doc);
         }
       }
@@ -87,6 +51,53 @@ class _OutfitInventoryState extends State<OutfitInventory> {
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Digital Wardrobe"),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MatchedOutfits(
+                    tops: tops,
+                    bottoms: bottoms,
+                    shoes: shoes,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text("Suggest Outfit"),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            buildOutfitCategory('Tops', tops.take(3).toList()),
+            const SizedBox(height: 20),
+            buildOutfitCategory('Bottoms', bottoms.take(3).toList()),
+            const SizedBox(height: 20),
+            buildOutfitCategory('Shoes', shoes.take(3).toList()),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => OutfitScreen()));
+        },
+        icon: const Icon(Icons.add),
+        label: const Text("Add Clothes"),
+        tooltip: "Add Clothes",
+      ),
+    );
+  }
+
   Widget buildOutfitCategory(String title, List<DocumentSnapshot> outfits) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,44 +107,63 @@ class _OutfitInventoryState extends State<OutfitInventory> {
           children: [
             Text(
               title,
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             TextButton(
-                onPressed: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => OutfitAll(category: title, items: outfits,)));
-                },
-                child: Text("See All"))
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => OutfitAll(category: title, items: outfits),
+                  ),
+                );
+              },
+              child: const Text("See All"),
+            ),
           ],
         ),
-        SizedBox(
-          height: 20,
-        ),
+        const SizedBox(height: 10),
         outfits.isEmpty
-            ? Text("No outfits in this category.")
-            : ListView.builder(
-            
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemCount: outfits.length,
-                itemBuilder: (context, index) {
-                  var outfit = outfits[index];
+            ? const Text(
+                "No outfits in this category.",
+                style: TextStyle(color: Colors.grey),
+              )
+            : Column(
+                children: outfits.map((outfit) {
+                  String? imagePath = outfit['localPath'];
                   return Card(
-                    margin: EdgeInsets.symmetric(vertical: 5),
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
-                      title: Text(outfit['outfitType']),
-                      subtitle: Text("Color:   ${outfit['color']}"),
-                      leading: outfit['localPath'] != null
-                          ? Image.file(
-                              File(outfit['localPath']),
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                            )
-                          : null,
+                      contentPadding: const EdgeInsets.all(10),
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: imagePath != null
+                            ? Image.file(
+                                File(imagePath),
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported),
+                              ),
+                      ),
+                      title: Text(
+                        "Color: ${outfit['color']}",
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text("Type: ${outfit['outfitType']}"),
                     ),
                   );
-                })
+                }).toList(),
+              ),
       ],
     );
   }

@@ -1,12 +1,9 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:palette_generator/palette_generator.dart';
 import 'package:quiz3_1/outfit_classifier.dart';
 import 'package:image/image.dart' as img;
-import 'package:path/path.dart' as path;
 
 class OutfitScreen extends StatefulWidget {
   @override
@@ -27,7 +24,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
     classifier.loadModel();
   }
 
-    Future<void> pickImage() async {
+  Future<void> pickImage() async {
     final pickedFile = await picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
@@ -36,13 +33,8 @@ class _OutfitScreenState extends State<OutfitScreen> {
         color = "";
       });
 
-      // Preprocess the image
       List<double> imageData = await preprocessImage(image!);
-
-      // Classify the outfit type
       String outfitResult = classifier.classifyImage(imageData);
-
-      // Classify the color using the color model
       String colorResult = classifier.classifyColor(imageData);
 
       setState(() {
@@ -53,10 +45,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
   }
 
   Future<void> addOutfitToLocalFirestore() async {
-    if (image == null || prediction.isEmpty || color.isEmpty) {
-      print("Missing image or classification result.");
-      return;
-    }
+    if (image == null || prediction.isEmpty || color.isEmpty) return;
 
     setState(() => isLoading = true);
 
@@ -69,7 +58,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Outfit saved locally!")),
+        const SnackBar(content: Text("Outfit saved successfully!")),
       );
 
       setState(() {
@@ -80,14 +69,12 @@ class _OutfitScreenState extends State<OutfitScreen> {
     } catch (e) {
       print("Error saving outfit: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to save outfit.")),
+        const SnackBar(content: Text("Failed to save outfit.")),
       );
     } finally {
       setState(() => isLoading = false);
     }
   }
-
-  
 
   Future<List<double>> preprocessImage(File image) async {
     img.Image? imgData = img.decodeImage(await image.readAsBytes());
@@ -100,7 +87,6 @@ class _OutfitScreenState extends State<OutfitScreen> {
         int r = (pixel >> 16) & 0xFF;
         int g = (pixel >> 8) & 0xFF;
         int b = pixel & 0xFF;
-
         imageData.add(r / 255.0);
         imageData.add(g / 255.0);
         imageData.add(b / 255.0);
@@ -112,42 +98,76 @@ class _OutfitScreenState extends State<OutfitScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Add Outfit")),
+      appBar: AppBar(title: const Text("Add Outfit")),
       body: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                if (image != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(image!, height: 300),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            if (image != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Image.file(image!, height: 300, fit: BoxFit.cover),
+              ),
+            const SizedBox(height: 25),
+            if (prediction.isNotEmpty || color.isNotEmpty)
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                color: Colors.grey.shade100,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  child: Column(
+                    children: [
+                      if (prediction.isNotEmpty)
+                        Row(
+                          children: [
+                            const Icon(Icons.checkroom, color: Colors.blueAccent),
+                            const SizedBox(width: 10),
+                            Text("Outfit: $prediction", style: const TextStyle(fontSize: 18)),
+                          ],
+                        ),
+                      const SizedBox(height: 10),
+                      if (color.isNotEmpty)
+                        Row(
+                          children: [
+                            const Icon(Icons.color_lens, color: Colors.purple),
+                            const SizedBox(width: 10),
+                            Text("Color: $color", style: const TextStyle(fontSize: 18)),
+                          ],
+                        ),
+                    ],
                   ),
-                SizedBox(height: 20),
-                if (prediction.isNotEmpty)
-                  Text("Outfit: $prediction", style: TextStyle(fontSize: 20)),
-                if (color.isNotEmpty)
-                  Text("Color: $color", style: TextStyle(fontSize: 20)),
-                SizedBox(height: 20),
-
-                ElevatedButton(
-                  onPressed: pickImage,
-                  child: Text("Take a Picture"),
                 ),
-
-                if (image != null && prediction.isNotEmpty && color.isNotEmpty)
-                  SizedBox(height: 20),
-                if (image != null && prediction.isNotEmpty && color.isNotEmpty)
-                  ElevatedButton(
-                    onPressed: isLoading ? null : addOutfitToLocalFirestore,
-                    child: isLoading
-                        ? CircularProgressIndicator(color: Colors.white)
-                        : Text("Store Outfit"),
-                  ),
-              ],
+              ),
+            const SizedBox(height: 30),
+            ElevatedButton.icon(
+              onPressed: pickImage,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text("Take a Picture"),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
             ),
-          ),
+            const SizedBox(height: 20),
+            if (image != null && prediction.isNotEmpty && color.isNotEmpty)
+              ElevatedButton.icon(
+                onPressed: isLoading ? null : addOutfitToLocalFirestore,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(isLoading ? "Saving..." : "Store Outfit"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+          ],
         ),
       ),
     );
