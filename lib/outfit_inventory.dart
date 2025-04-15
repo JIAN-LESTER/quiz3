@@ -26,16 +26,23 @@ class _OutfitInventoryState extends State<OutfitInventory> {
   }
 
   void _loadOutfits() {
-    stream = firestore.collection('outfits').snapshots().listen((querySnapshot) {
+    stream =
+        firestore.collection('outfits').snapshots().listen((querySnapshot) {
       tops.clear();
       bottoms.clear();
       shoes.clear();
 
       for (var doc in querySnapshot.docs) {
         String outfitType = doc['outfitType'].toString().toLowerCase();
-        if (outfitType.contains('top')) {
+        if (outfitType.contains('top') ||
+            outfitType.contains('tshirt') ||
+            outfitType.contains('poloshirt') ||
+            outfitType.contains('polo') ||
+            outfitType.contains('longsleeve')) {
           tops.add(doc);
-        } else if (outfitType.contains('bottom')) {
+        } else if (outfitType.contains('bottom') ||
+            outfitType.contains('pants') ||
+            outfitType.contains('shorts')) {
           bottoms.add(doc);
         } else if (outfitType.contains('shoes')) {
           shoes.add(doc);
@@ -79,17 +86,18 @@ class _OutfitInventoryState extends State<OutfitInventory> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            buildOutfitCategory('Tops', tops.take(3).toList()),
+            buildOutfitCategory('Tops', tops),
             const SizedBox(height: 20),
-            buildOutfitCategory('Bottoms', bottoms.take(3).toList()),
+            buildOutfitCategory('Bottoms', bottoms),
             const SizedBox(height: 20),
-            buildOutfitCategory('Shoes', shoes.take(3).toList()),
+            buildOutfitCategory('Shoes', shoes),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => OutfitScreen()));
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => OutfitScreen()));
         },
         icon: const Icon(Icons.add),
         label: const Text("Add Clothes"),
@@ -99,6 +107,7 @@ class _OutfitInventoryState extends State<OutfitInventory> {
   }
 
   Widget buildOutfitCategory(String title, List<DocumentSnapshot> outfits) {
+    final previewOutfits = outfits.take(3).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -109,17 +118,18 @@ class _OutfitInventoryState extends State<OutfitInventory> {
               title,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OutfitAll(category: title, items: outfits),
-                  ),
-                );
-              },
-              child: const Text("See All"),
-            ),
+          TextButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OutfitAll(category: title),
+      ),
+    );
+  },
+  child: const Text("See All"),
+),
+
           ],
         ),
         const SizedBox(height: 10),
@@ -129,7 +139,7 @@ class _OutfitInventoryState extends State<OutfitInventory> {
                 style: TextStyle(color: Colors.grey),
               )
             : Column(
-                children: outfits.map((outfit) {
+                children: previewOutfits.map((outfit) {
                   String? imagePath = outfit['localPath'];
                   return Card(
                     elevation: 4,
@@ -156,10 +166,10 @@ class _OutfitInventoryState extends State<OutfitInventory> {
                               ),
                       ),
                       title: Text(
-                        "Color: ${outfit['color']}",
+                        "Type: ${outfit['outfitType']}",
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      subtitle: Text("Type: ${outfit['outfitType']}"),
+                      subtitle: Text("Color: ${outfit['color']}"),
                     ),
                   );
                 }).toList(),

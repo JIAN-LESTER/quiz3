@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
 import 'package:quiz3_1/outfit_classifier.dart';
 import 'package:image/image.dart' as img;
 
@@ -24,25 +25,25 @@ class _OutfitScreenState extends State<OutfitScreen> {
     classifier.loadModel();
   }
 
-  Future<void> pickImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
-      setState(() {
-        image = File(pickedFile.path);
-        prediction = "";
-        color = "";
-      });
+Future<void> pickImage() async {
+  final pickedFile = await picker.pickImage(source: ImageSource.camera);
+  if (pickedFile != null) {
+    setState(() {
+      image = File(pickedFile.path);
+      prediction = "";
+      color = "";
+    });
 
-      List<double> imageData = await preprocessImage(image!);
-      String outfitResult = classifier.classifyImage(imageData);
-      String colorResult = classifier.classifyColor(imageData);
+    List<double> imageData = await preprocessImage(image!);
+    String outfitResult = classifier.classifyImage(imageData);
+    String colorResult = classifier.classifyColor(imageData);
 
-      setState(() {
-        prediction = outfitResult;
-        color = colorResult;
-      });
-    }
+    setState(() {
+      prediction = outfitResult;
+      color = colorResult;
+    });
   }
+}
 
   Future<void> addOutfitToLocalFirestore() async {
     if (image == null || prediction.isEmpty || color.isEmpty) return;
@@ -95,6 +96,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
     return imageData;
   }
 
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(

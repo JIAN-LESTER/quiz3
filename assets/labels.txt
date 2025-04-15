@@ -1,3 +1,7 @@
-Top
-Bottom
+Tshirt
+Polo
+Longsleeve
+Pants
+Shorts
 Shoes
+Unknown

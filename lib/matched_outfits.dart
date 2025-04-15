@@ -59,12 +59,19 @@ class _MatchedOutfitState extends State<MatchedOutfits> {
     bottom = bottom.toLowerCase();
     shoes = shoes.toLowerCase();
 
+    if (top == bottom && bottom == shoes) return false;
+
+    if (top == shoes && top != bottom) return true;
+
     if (top == 'white' || bottom == 'white' || shoes == 'white') return true;
     if (top == 'black' || bottom == 'white' || shoes == 'white') return true;
-    if (top == 'blue' && bottom == "white") return true;
+    if (top == 'white' || bottom == 'blue' || shoes == 'white') return true;
+    if (top == 'red' && bottom == 'white') return true;
+    if (top == 'white' && bottom == 'black' && shoes == 'white') return true;
+    if (top == 'blue' && bottom == 'white') return true;
     if (top == 'black' && bottom == 'grey') return true;
-    if (top == bottom && bottom == shoes) return false;
-    return true;
+
+    return false;
   }
 
   @override
@@ -92,13 +99,14 @@ class _MatchedOutfitState extends State<MatchedOutfits> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                   
                         const SizedBox(height: 20),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: ['top', 'bottom', 'shoes'].map((key) {
                             final doc = suggestedOutfits[curr][key]!;
                             final imagePath = doc['localPath'];
+                            final color = doc['color'] ?? "Unknown";
+
                             return Column(
                               children: [
                                 Text(
@@ -125,6 +133,11 @@ class _MatchedOutfitState extends State<MatchedOutfits> {
                                             color: Colors.grey,
                                           ),
                                         ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  "Color: ${color.toString().toUpperCase()}",
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ],
                             );
