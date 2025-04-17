@@ -1,10 +1,10 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:quiz3_1/outfit_classifier.dart';
-import 'package:image/image.dart' as img;
+import 'outfit_classifier.dart';
 
 class OutfitScreen extends StatefulWidget {
   @override
@@ -19,84 +19,93 @@ class _OutfitScreenState extends State<OutfitScreen> {
   String color = "";
   bool isLoading = false;
 
+  // Assuming you have an object segmentation model
+  Interpreter? objectSegInterpreter;
+
   @override
   void initState() {
     super.initState();
     classifier.loadModel();
+    loadObjectSegmentationModel();
   }
 
-Future<void> pickImage() async {
-  final pickedFile = await picker.pickImage(source: ImageSource.camera);
-  if (pickedFile != null) {
-    setState(() {
-      image = File(pickedFile.path);
-      prediction = "";
-      color = "";
-    });
-
-    List<double> imageData = await preprocessImage(image!);
-    String outfitResult = classifier.classifyImage(imageData);
-    String colorResult = classifier.classifyColor(imageData);
-
-    setState(() {
-      prediction = outfitResult;
-      color = colorResult;
-    });
-  }
-}
-
-  Future<void> addOutfitToLocalFirestore() async {
-    if (image == null || prediction.isEmpty || color.isEmpty) return;
-
-    setState(() => isLoading = true);
-
+  Future<void> loadObjectSegmentationModel() async {
     try {
-      await FirebaseFirestore.instance.collection('outfits').add({
-        'outfitType': prediction,
-        'color': color,
-        'localPath': image!.path,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+      objectSegInterpreter = await Interpreter.fromAsset('assets/model/segmentation_model.tflite');
+      print("Object segmentation model loaded.");
+    } catch (e) {
+      print("Error loading object segmentation model: $e");
+    }
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Outfit saved successfully!")),
-      );
-
+  Future<void> pickImage() async {
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    if (pickedFile != null) {
       setState(() {
-        image = null;
+        image = File(pickedFile.path);
         prediction = "";
         color = "";
       });
-    } catch (e) {
-      print("Error saving outfit: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to save outfit.")),
-      );
-    } finally {
-      setState(() => isLoading = false);
+
+      // Perform object segmentation to isolate clothes
+      File segmentedImage = await applyObjectSegmentation(image!);
+
+      // Preprocess the segmented image
+      List<double> imageData = classifier.preprocessSegmentedImage(segmentedImage);
+
+      // Get predictions
+      String outfitResult = classifier.classifyImage(imageData);
+      String colorResult = classifier.classifyColor(imageData);
+
+      setState(() {
+        prediction = outfitResult;
+        color = colorResult;
+      });
     }
   }
 
-  Future<List<double>> preprocessImage(File image) async {
-    img.Image? imgData = img.decodeImage(await image.readAsBytes());
-    img.Image resizedImage = img.copyResize(imgData!, width: 224, height: 224);
+  Future<File> applyObjectSegmentation(File image) async {
+    // Here, use your object segmentation model (e.g., DeepLabV3) to segment the image
+    // Return the image with the background removed
+    // For now, just returning the original image
+    return image;
+  }
 
-    List<double> imageData = [];
-    for (int i = 0; i < resizedImage.height; i++) {
-      for (int j = 0; j < resizedImage.width; j++) {
-        int pixel = resizedImage.getPixel(j, i);
-        int r = (pixel >> 16) & 0xFF;
-        int g = (pixel >> 8) & 0xFF;
-        int b = pixel & 0xFF;
-        imageData.add(r / 255.0);
-        imageData.add(g / 255.0);
-        imageData.add(b / 255.0);
+  // Upload the outfit data to Firebase
+  Future<void> uploadToFirebase() async {
+    if (prediction.isNotEmpty && color.isNotEmpty && image != null) {
+      try {
+        setState(() {
+          isLoading = true;
+        });
+
+        // Prepare the outfit data
+        Map<String, dynamic> outfitData = {
+          'image': image!.path, // Store image path or upload the image if needed
+          'prediction': prediction,
+          'color': color,
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        // Add the outfit data to Firestore
+        await FirebaseFirestore.instance.collection('outfits').add(outfitData);
+
+        setState(() {
+          isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Outfit added to Firebase")));
+      } catch (e) {
+        setState(() {
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error uploading to Firebase: $e")));
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please classify the outfit first")));
     }
-    return imageData;
   }
 
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,19 +161,14 @@ Future<void> pickImage() async {
               ),
             ),
             const SizedBox(height: 20),
-            if (image != null && prediction.isNotEmpty && color.isNotEmpty)
+            if (isLoading)
+              CircularProgressIndicator()
+            else
               ElevatedButton.icon(
-                onPressed: isLoading ? null : addOutfitToLocalFirestore,
-                icon: isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(isLoading ? "Saving..." : "Store Outfit"),
+                onPressed: uploadToFirebase,
+                icon: const Icon(Icons.upload),
+                label: const Text("Store Outfit"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
